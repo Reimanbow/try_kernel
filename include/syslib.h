@@ -66,4 +66,16 @@ static inline UW get_primask(void) {
 /* 割り込み許可マクロ */
 #define EI(intsts)  (set_primask(intsts))
 
+/* デバッグ用シリアル通信 */
+
+/**
+ * @brief UARTの初期化
+ */
+void tm_com_init(void);
+
+/**
+ * @brief デバッグ用UART出力
+ */
+UINT tm_putstring(char* str);
+
 #endif /* SYSLIB_H */

@@ -1,9 +1,7 @@
 /**
  * @file main.c
  */
-#include "typedef.h"
-#include "sysdef.h"
-#include "syslib.h"
+#include <trykernel.h>
 
 /**
  * @brief 時間待ち関数
@@ -23,6 +21,11 @@ static void delay_ms(UINT ms) {
  * @brief メイン関数
  */
 int main(void) {
+    // デバッグ出力の初期化
+    tm_com_init();
+    // Hello, World出力
+    tm_putstring("Hello, World\n");
+
     while (1) {
         out_w(GPIO_OUT_XOR, (1<<25));   // LEDの表示反転
         delay_ms(500);                  // 0.5秒待ち
