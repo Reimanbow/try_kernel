@@ -15,6 +15,7 @@ add_executable(${TARGET_NAME}
     boot/reset_hdr.c
     boot/vector_tbl.c
     # kernel, device などのファイルもここに連ねる
+    kernel/syslib.c
 )
 
 # インクルードパスの設定

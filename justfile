@@ -20,3 +20,7 @@ clean:
 # 注意：ELFファイルをそのまま、あるいはUF2に変換して投げ込みまする
 flash: build
     openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "program build/try-kernel verify reset exit"
+
+# シリアルモニタを開く
+monitor device="/dev/ttyACM0":
+    picocom -b 115200 {{ device }}
