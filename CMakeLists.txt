@@ -16,6 +16,8 @@ add_executable(${TARGET_NAME}
     boot/vector_tbl.c
     # kernel, device などのファイルもここに連ねる
     kernel/syslib.c
+    kernel/context.c
+    kernel/dispatch.S
 )
 
 # インクルードパスの設定

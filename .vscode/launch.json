@@ -15,7 +15,7 @@
             "searchDir": [],
             "runToEntryPoint": "main",
             "postLaunchCommands": [
-                "set substitute-path /workspace /home/manbou/try_kernel"
+                "set substitute-path /workspace /home/manbou/study/try_kernel"
             ],
             "preLaunchTask": "build",
             "svdFile": "${workspaceFolder}/.vscode/rp2040.svd"

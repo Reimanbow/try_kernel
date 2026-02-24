@@ -7,6 +7,7 @@
 #include <syslib.h>
 #include <knldef.h>
 
+extern void dispatch_entry(void);   // ディスパッチャ
 /**
  * @brief デフォルトハンドラ
  */
@@ -32,7 +33,7 @@ void (* const vector_tbl[])() __attribute__((section(".vector"))) = {
     Default_Handler,            // 11: Svcall
     0,                          // 12: 未使用
     0,                          // 13: 未使用
-    Default_Handler,            // 14: PendSV
+    dispatch_entry,             // 14: PendSV
     Default_Handler,            // 15: Systick
     Default_Handler,            // IRQ 0
     Default_Handler,            // IRQ 1
