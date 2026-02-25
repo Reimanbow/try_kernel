@@ -1,0 +1,31 @@
+/**
+ * @file systimer.c
+ * @brief Try Kernel システムタイマ
+ */
+#include <trykernel.h>
+#include <knldef.h>
+
+TCB *wait_queue;    // 時間待ち状態のタスクの待ち行列(ウェイトキュー)
+
+// システムタイマ割り込みハンドラ
+void systimer_handler(void) {
+    TCB     *tcb, *next;
+
+    for (tcb = wait_queue; tcb != NULL; tcb = next) {
+        next = tcb->next;
+        if (tcb->waitim == TMO_FEVR) {
+            continue;
+        } else if (tcb->waitim > TIMER_PERIOD) {
+            // 待ち時間から経過時間を減じる
+            tcb->waitim -= TIMER_PERIOD;
+        } else {
+            // 待ち時間が経過したタスクを実行できる状態に戻す
+            tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+            *tcb->waierr    = E_OK;
+            tcb->state      = TS_READY;
+            tcb->waifct     = TWFCT_NON;
+            tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ
+        }
+    }
+    scheduler();    // スケジューラを実行する
+}
