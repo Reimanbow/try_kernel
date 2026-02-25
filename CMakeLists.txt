@@ -10,14 +10,18 @@ set(TARGET_NAME try-kernel)
 
 # 全ソースファイルを列挙（subdirectoryに分けず、ここで一括管理）
 add_executable(${TARGET_NAME}
-    application/main.c
+    application/usermain.c
     boot/boot2.c
     boot/reset_hdr.c
     boot/vector_tbl.c
     # kernel, device などのファイルもここに連ねる
-    kernel/syslib.c
     kernel/context.c
     kernel/dispatch.S
+    kernel/inittsk.c
+    kernel/scheduler.c
+    kernel/syslib.c
+    kernel/task_mange.c
+    kernel/task_queue.c
 )
 
 # インクルードパスの設定
