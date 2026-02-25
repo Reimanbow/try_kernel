@@ -7,7 +7,7 @@ image:
 
 # 城（プロジェクト）を築く（ビルド実行）
 build:
-    docker run --rm -v $(pwd):/workspace pico-build-env \
+    docker run --rm --user $(id -u):$(id -g) -v $(pwd):/workspace pico-build-env \
         bash -c "mkdir -p build && cd build && \
         cmake -DCMAKE_TOOLCHAIN_FILE=../arm_toolchain.cmake .. && \
         make -j$(nproc)"
@@ -24,3 +24,7 @@ flash: build
 # シリアルモニタを開く
 monitor device="/dev/ttyACM0":
     picocom -b 115200 {{ device }}
+
+# ターゲットをリセットする（別ターミナルから使う）
+reset:
+    openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "init; reset run; exit" 2>&1 | grep -v "^Info"
