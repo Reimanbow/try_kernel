@@ -5,6 +5,10 @@
 #ifndef APIDEF_H
 #define APIDEF_H
 
+// タイムアウト時間
+#define TMO_POL         (0)     // タイムアウト時間 0
+#define TMO_FEVR        (-1)    // 無限待ち
+
 // タスク生成情報
 typedef struct {
     ATR     tskatr;     // タスク属性
@@ -37,5 +41,11 @@ ER tk_sta_tsk(ID tskid, INT stacd);
  * @brief タスクの終了
  */
 void tk_ext_tsk(void);
+
+// タスク付属同期API
+/**
+ * @brief APIを発行したタスクを、引数で指定した時間、時間待ちの状態にする
+ */
+ER tk_dly_tsk(RELTIM dlytim);
 
 #endif /* APIDEF_H */
