@@ -1,0 +1,70 @@
+/**
+ * @file dispatch.S
+ * Try Kernel 簡易ディスパッチャ
+ */
+
+    .align 2
+    .thumb_func
+    .globl dispatch_entry
+
+dispatch_entry:
+    /**
+     * 1. 実行中のタスクの実行コンテキスト情報をスタックに退避
+     *    ソフトウェア割込み時にR0~R3、R12、LR、PC、xPSRはスタックに退避されている
+     *    pushでは、R0~R7のレジスタとLRレジスタのみが命令の対象
+     */
+    push    {r4-r7}
+    mov     r0, r8
+    mov     r1, r9
+    mov     r2, r10
+    mov     r3, r11
+    push    {r0-r3}
+
+    /**
+     * 2. 現在実行中のタスクの確認
+     *    main.cのcur_taskが実行中のタスクのIDを示している
+     */
+    ldr     r0, =cur_task
+    ldr     r1, [r0]
+    cmp     r1, #0
+    beq     disp_010        // cur_taskのID番号=0ならばdisp_010へ。起動時最初のタスクなので保存するべき実行コンテキストがないから
+    
+    /**
+     * 3. SPレジスタの値をctx_tblに格納
+     */
+    ldr     r0, =ctx_tbl
+    sub     r1, #1
+    lsl     r1, r1, #2
+    mov     r2, sp
+    str     r2, [r0, r1]
+
+disp_010:
+    /**
+     * 4. 実行中のタスクの変更
+     *    main.cのnext_taskが次に実行するタスクのIDを示している
+     */
+    ldr     r0, =next_task
+    ldr     r1, [r0]
+    ldr     r0, =cur_task
+    str     r1, [r0]
+
+    /**
+     * 5. スタックの切り替え
+     */
+    ldr     r0, =ctx_tbl
+    sub     r1, #1
+    lsl     r1, r1, #2
+    ldr     r2, [r0, r1]
+    mov     sp, r2
+
+    /**
+     * 6. スタック上のコンテキスト情報の復元
+     *    popでは、R0~R7のレジスタとPCレジスタのみが命令の対象
+     */
+    pop     {r0-r3}
+    mov     r11, r3
+    mov     r10, r2
+    mov     r9, r1
+    mov     r8, r0
+    pop     {r4-r7}
+    bx      lr
