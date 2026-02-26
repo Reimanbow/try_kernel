@@ -21,7 +21,13 @@ void systimer_handler(void) {
         } else {
             // 待ち時間が経過したタスクを実行できる状態に戻す
             tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
-            *tcb->waierr    = E_OK;
+
+            if (tcb->waifct == TWFCT_DLY) {
+                *tcb->waierr = E_OK;    // tk_dly_tskからの復帰はエラーなし
+            } else {
+                *tcb->waierr = E_TMOUT; // タイムアウトエラー
+            }
+
             tcb->state      = TS_READY;
             tcb->waifct     = TWFCT_NON;
             tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ

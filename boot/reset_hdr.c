@@ -107,8 +107,8 @@ static void init_clock(void) {
     clr_w(CLK_SYS+CLK_x_CTRL, CLK_REF_CTRL_SRC);
     while(!(in_w(CLK_SYS+CLK_x_SELECTED) & 0x1));
 
-    out_w(CLK_SYS+CLK_x_CTRL, (in_w(CLK_SYS+CLK_x_CTRL) & CLK_SYS_CTRL_AUXSRC));
-    out_w(CLK_SYS+CLK_x_CTRL, (in_w(CLK_SYS+CLK_x_CTRL) & CLK_REF_CTRL_SRC) | 1 );
+    out_w(CLK_SYS+CLK_x_CTRL, (in_w(CLK_SYS+CLK_x_CTRL) & ~CLK_SYS_CTRL_AUXSRC));
+    out_w(CLK_SYS+CLK_x_CTRL, (in_w(CLK_SYS+CLK_x_CTRL) & ~CLK_REF_CTRL_SRC) | 1 );
     while(!(in_w(CLK_SYS+CLK_x_SELECTED)&(1<<1)));
 
     set_w(CLK_SYS+CLK_x_CTRL, CLK_CTRL_ENABLE);
