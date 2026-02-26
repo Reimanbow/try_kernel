@@ -121,4 +121,21 @@ ER tk_sig_sem(ID semid, INT cnt);
  */
 ER tk_wai_sem(ID semid, INT cnt, TMO tmout);
 
+// デバイス管理API
+ID tk_opn_dev(const UB *devnm, UINT omode);
+ER tk_srea_dev(ID dd, W start, void *buf, SZ size, SZ *asize);
+ER tk_swri_dev(ID dd, W start, const void *buf, SZ size, SZ *asize);
+
+#define TD_READ     0x0001U     // 読み込み専用
+#define TD_WRITE    0x0002U     // 書き込み専用
+#define TD_UPDATE   0x0003U     // 読み書き
+
+// I2Cデバイスドライバ定義
+#define TDN_I2C_EXEC    (-100)  // 属性データ(拡張アクセス)
+typedef struct {
+    UW sadr;        // スレーブアドレス
+    UB *sbuf;       // 送信バッファ
+    UB *rbuf;       // 受信バッファ
+} T_I2C_EXEC;
+
 #endif /* APIDEF_H */
