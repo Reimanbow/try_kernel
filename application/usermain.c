@@ -10,6 +10,14 @@ T_CFLG  cflg = {
     .iflgptn    = 0,                    // イベントフラグ初期値
 };
 
+// セマフォ生成情報
+ID  semid;
+T_CSEM  csem = {
+    .sematr     = TA_TFIFO | TA_FIRST,  // セマフォ属性
+    .isemcnt    = 1,                    // セマフォ資源数の初期値
+    .maxsem     = 1,                    // セマフォ資源数の最大値
+};
+
 UW  tskstk_btn[1024/sizeof(UW)];  // ボタン検出タスクのスタック
 ID  tskid_btn;                    // ボタン検出タスクのID番号
 
@@ -88,12 +96,15 @@ void task_led1(INT stacd, void *exinf) {
 
     while (1) {
         tk_wai_flg(flgid, (1<<0), TWF_ANDW | TWF_BITCLR, &flgptn, TMO_FEVR);    // フラグ待ち
+
+        tk_wai_sem(semid, 1, TMO_FEVR);     // 資源の獲得
         for (INT i = 0; i < 3; i++) {
             out_w(GPIO_OUT_SET, (1<<25));   // LEDの点灯
             tk_dly_tsk(500);                // 0.5秒待ち
             out_w(GPIO_OUT_CLR, (1<<25));   // LEDの消灯
             tk_dly_tsk(500);                // 0.5秒待ち
         }
+        tk_sig_sem(semid, 1);               // 資源の返却
     }
 }
 
@@ -105,12 +116,15 @@ void task_led2(INT stacd, void *exinf) {
 
     while (1) {
         tk_wai_flg(flgid, (1<<1), TWF_ANDW | TWF_BITCLR, &flgptn, TMO_FEVR);    // フラグ待ち
+
+        tk_wai_sem(semid, 1, TMO_FEVR);     // 資源の獲得
         for (INT i = 0; i < 5; i++) {
             out_w(GPIO_OUT_SET, (1<<25));   // LEDの点灯
             tk_dly_tsk(100);                // 0.1秒待ち
             out_w(GPIO_OUT_CLR, (1<<25));   // LEDの消灯
             tk_dly_tsk(100);                // 0.1秒待ち
         }
+        tk_sig_sem(semid, 1);               // 資源の返却
     }
 }
 
@@ -120,6 +134,9 @@ void task_led2(INT stacd, void *exinf) {
 int usermain(void) {
     // イベントフラグの生成
     flgid = tk_cre_flg(&cflg);
+
+    // セマフォの生成
+    semid = tk_cre_sem(&csem);
 
     // ボタン検出タスクの生成、実行
     tskid_btn = tk_cre_tsk(&ctsk_btn);

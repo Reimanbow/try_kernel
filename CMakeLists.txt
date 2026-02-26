@@ -20,6 +20,7 @@ add_executable(${TARGET_NAME}
     kernel/eventflag.c
     kernel/inittsk.c
     kernel/scheduler.c
+    kernel/semaphore.c
     kernel/syslib.c
     kernel/systimer.c
     kernel/task_mange.c
