@@ -48,4 +48,14 @@ void tk_ext_tsk(void);
  */
 ER tk_dly_tsk(RELTIM dlytim);
 
+/**
+ * @brief 他のタスクからtk_wup_tskにより起床されるまで起床待ち状態とする
+ */
+ER tk_slp_tsk(TMO tmout);
+
+/**
+ * @brief 指定したタスクに対して起床要求を行う
+ */
+ER tk_wup_tsk(ID tskid);
+
 #endif /* APIDEF_H */
