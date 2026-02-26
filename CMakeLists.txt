@@ -14,7 +14,9 @@ add_executable(${TARGET_NAME}
     boot/boot2.c
     boot/reset_hdr.c
     boot/vector_tbl.c
-    # kernel, device などのファイルもここに連ねる
+    device/adc/adc_rp2040.c
+    device/devmgr/device.c
+    device/i2c/i2c_rp2040.c
     kernel/context.c
     kernel/dispatch.S
     kernel/eventflag.c
