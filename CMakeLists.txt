@@ -17,6 +17,7 @@ add_executable(${TARGET_NAME}
     # kernel, device などのファイルもここに連ねる
     kernel/context.c
     kernel/dispatch.S
+    kernel/eventflag.c
     kernel/inittsk.c
     kernel/scheduler.c
     kernel/syslib.c
