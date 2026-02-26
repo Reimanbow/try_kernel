@@ -19,6 +19,7 @@ typedef enum {
     TWFCT_DLY   = 1,    // tk_dly_tskによる時間待ち
     TWFCT_SLP   = 2,    // tk_slp_tskによる起床待ち
     TWFCT_FLG   = 3,    // tk_wai_flgによるフラグ待ち
+    TWFCT_SEM   = 4,    // tk_wai_semによる資源待ち
 } TWFCT;
 
 // TCB(Task Control Block)定義
@@ -46,6 +47,9 @@ typedef struct st_tcb {
     UINT    waiptn;         // 待ちフラグパターン
     UINT    wfmode;         // 待ちモード
     UINT    *p_flgptn;      // 待ち解除時のフラグパターン
+
+    // セマフォ待ち情報
+    INT     waisem;         // セマフォ資源要求数
 } TCB;
 
 extern TCB  tcb_tbl[];      // TCBテーブル
@@ -123,6 +127,13 @@ typedef struct st_flgcb {
     KSSTAT  state;      // イベントフラグ状態
     UINT    flgptn;     // イベントフラグ値
 } FLGCB;
+
+// セマフォ管理情報(SEMCB)
+typedef struct semaphore_control_block {
+    KSSTAT  state;      // セマフォ状態
+    INT     semcnt;     // セマフォ値
+    INT     maxsem;     // セマフォ最大値
+} SEMCB;
 
 /**
  * @brief OSメイン関数
