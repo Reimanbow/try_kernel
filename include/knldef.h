@@ -20,6 +20,8 @@ typedef enum {
     TWFCT_SLP   = 2,    // tk_slp_tskによる起床待ち
     TWFCT_FLG   = 3,    // tk_wai_flgによるフラグ待ち
     TWFCT_SEM   = 4,    // tk_wai_semによる資源待ち
+    TWFCT_MBFS  = 5,    // tk_snd_mbfによる送信待ち
+    TWFCT_MBFR  = 6,    // tk_rcv_mbfによる受信待ち
 } TWFCT;
 
 // TCB(Task Control Block)定義
@@ -50,6 +52,10 @@ typedef struct st_tcb {
 
     // セマフォ待ち情報
     INT     waisem;         // セマフォ資源要求数
+
+    // メッセージバッファ待ち情報
+    INT             msgsz;  // メッセージのサイズ
+    const void      *msg;   // メッセージを格納する領域
 } TCB;
 
 extern TCB  tcb_tbl[];      // TCBテーブル
@@ -134,6 +140,18 @@ typedef struct semaphore_control_block {
     INT     semcnt;     // セマフォ値
     INT     maxsem;     // セマフォ最大値
 } SEMCB;
+
+// メッセージバッファ管理情報(MBFCB)
+typedef struct st_mbfcb {
+    KSSTAT  state;      // メッセージバッファ状態
+    SZ      bufsz;      // メッセージバッファのサイズ
+    INT     maxmsz;     // メッセージの最大サイズ
+    void    *bufptr;    // メッセージバッファ領域のアドレス
+
+    SZ      freesz;     // バッファサイズ
+    void    *buf_rp;    // 読み込み位置
+    void    *buf_wp;    // 書き込み位置
+} MBFCB;
 
 /**
  * @brief OSメイン関数

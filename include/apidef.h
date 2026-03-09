@@ -121,6 +121,30 @@ ER tk_sig_sem(ID semid, INT cnt);
  */
 ER tk_wai_sem(ID semid, INT cnt, TMO tmout);
 
+// メッセージバッファ生成情報
+typedef struct t_cmbf {
+    ATR     mbfatr;     // メッセージバッファ属性
+    SZ      bufsz;      // メッセージバッファのサイズ
+    INT     maxmsz;     // メッセージの最大サイズ
+    void    *bufptr;    // メッセージバッファ領域のアドレス
+} T_CMBF;
+
+// メッセージバッファAPI
+/**
+ * @brief メッセージバッファ生成
+ */
+ID tk_cre_mbf(const T_CMBF *pk_cmbf);
+
+/**
+ * @brief メッセージバッファへの送信
+ */
+ER tk_snd_mbf(ID mbfid, const void *msg, INT msgsz, TMO tmout);
+
+/**
+ * @brief メッセージバッファからの受信
+ */
+INT tk_rcv_mbf(ID mbfid, void *msg, TMO tmout);
+
 // デバイス管理API
 ID tk_opn_dev(const UB *devnm, UINT omode);
 ER tk_srea_dev(ID dd, W start, void *buf, SZ size, SZ *asize);
