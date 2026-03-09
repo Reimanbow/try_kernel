@@ -21,6 +21,7 @@ add_executable(${TARGET_NAME}
     kernel/dispatch.S
     kernel/eventflag.c
     kernel/inittsk.c
+    kernel/messagebuf.c
     kernel/scheduler.c
     kernel/semaphore.c
     kernel/syslib.c
