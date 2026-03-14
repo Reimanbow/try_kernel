@@ -153,6 +153,15 @@ typedef struct st_mbfcb {
     void    *buf_wp;    // 書き込み位置
 } MBFCB;
 
+// 例外・割り込みベクタテーブル
+extern void (* const vector_tbl[])();
+
+// 例外・割り込みベクタテーブル
+extern void (*knl_vec_tbl[])();
+
+// デフォルトハンドラ
+extern void Default_Handler(void);
+
 /**
  * @brief OSメイン関数
  */

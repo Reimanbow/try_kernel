@@ -14,6 +14,23 @@ extern const void *__data_end;
 extern const void *__bss_start;
 extern const void *__bss_end;
 
+// 例外・割り込みの初期化
+static void init_int(void) {
+    UW      *src, *dst;
+    UINT    i;
+
+    // 例外ベクタテーブルの移動
+    src = (UW*)vector_tbl;
+    dst = (UW*)knl_vec_tbl;
+
+    for (i = 0; i < ((N_SYSVEC + N_INTVEC)); i++) {
+        *dst++ = *src++;
+    }
+
+    *(_UW*)SCB_VTOR = (UW)knl_vec_tbl;                      // 例外ベクタテーブルの設定
+    out_w(SCB_SHPR3, (INTLEVEL_0<<24)|(INTLEVEL_3<<16));    // PendSV例外とSysTick例外の優先度設定
+}
+
 /* クロックの初期化 */
 
 #define XOSC_STARTUP_DELAY  ((XOSC_KHz + 128) / 256)
@@ -200,6 +217,7 @@ void Reset_Handler(void) {
     // PendSVC例外とSysTIck例外の優先度設定
     out_w(SCB_SHPR3, (INTLEVEL_0<<24)|(INTLEVEL_3<<16));
 
+    init_int();     // 割り込み・例外の初期化
     init_clock();   // クロックの初期化
     init_peri();    // ペリフェラルの有効化
     init_section(); // メモリの初期化
