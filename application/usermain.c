@@ -22,6 +22,34 @@ T_CTSK ctsk_sns = {
     .bufptr     = tskstk_sns,
 };
 
+// LED制御タスクの情報
+ID  tskid_led;                          // タスクID番号
+#define STKSZ_LED   1024                // スタックサイズ
+UW  tskstk_led[STKSZ_LED/sizeof(UW)];   // スタック領域
+void tsk_led(INT stacd, void *exinf);   // タスク実行関数
+
+// LED制御タスクの情報
+T_CTSK ctsk_led = {
+    .tskatr     = TA_HLNG | TA_RNG3 | TA_USERBUF,
+    .task       = tsk_led,
+    .stksz      = STKSZ_LED,
+    .itskpri    = 5,
+    .bufptr     = tskstk_led,
+};
+
+// メッセージバッファの情報
+ID  mbfid;                          // メッセージバッファID
+#define MSG_SZ  sizeof(UINT)        // メッセージサイズ
+#define MBF_SZ  ((MSG_SZ+1)*5)      // メッセージバッファサイズ
+UB  mbfbuf[MBF_SZ];                 // メッセージバッファ領域
+
+T_CMBF  cmbf = {
+    .bufptr = mbfbuf,
+    .bufsz  = MBF_SZ,
+    .maxmsz = MSG_SZ,
+    .mbfatr = 0,
+};
+
 UW      tim1, tim2;     // 時刻計測用グローバル変数
 
 // ECHO信号割り込みハンドラ
@@ -36,7 +64,7 @@ void echo_inthdr(UW intno) {
         if (i == 1) {
             if (val & (1 << INTNO_ECHO_EDGE_HIGH)) {            // エッジHIGH検出
                 tim1 = in_w(TIMER_TIMELR);                      // 開始時刻取得
-            } else if (val & (1 << INTNO_ECHO_EDGE_LOW)) {     // エッジLOW検出
+            } else if (val & (1 << INTNO_ECHO_EDGE_LOW)) {      // エッジLOW検出
                 tim2 = in_w(TIMER_TIMELR);                      // 終了時刻取得
                 tk_wup_tsk(tskid_sns);                          // タスクへの通知
             }
@@ -56,11 +84,11 @@ static void wait_10micro(void) {
 
 // 障害物に対するアクションの実行
 static void do_action(UW dis) {
-    if (dis < 150) {
-        // 障害物が近ければLED点灯
-        out_w(GPIO_OUT_SET, 1<<GPIO_LED);
-    } else {
-        out_w(GPIO_OUT_CLR, 1<<GPIO_LED);
+    ER  err;
+
+    err = tk_snd_mbf(mbfid, &dis, sizeof(dis), 100);
+    if (err < E_OK) {
+        tm_putstring("ERR: tk_snd_mbf");
     }
 }
 
@@ -111,11 +139,39 @@ void tsk_sns(INT stacd, void *exinf) {
     tk_slp_tsk(TMO_FEVR);
 }
 
+// LED制御タスクの実行関数
+void tsk_led(INT stacd, void *exinf) {
+    UINT    dis;        // 障害物の距離
+    ER      err;        // エラーコード
+
+    gpio_enable_output(GPIO_LED, 0);    // LED出力設定 初期値LOW
+    
+    while (1) {
+        err = tk_rcv_mbf(mbfid, &dis, TMO_FEVR);    // メッセージを受信
+        if (err >= E_OK) {
+            if (dis < 150) {
+                // 障害物が近ければLED点灯
+                out_w(GPIO_OUT_SET, 1<<GPIO_LED);
+            } else {
+                // 障害物が遠ければLED消灯
+                out_w(GPIO_OUT_CLR, 1<<GPIO_LED);
+            }
+        }
+    }
+}
+
 int usermain(void) {
     tm_putstring("Start usermain\n");
 
+    mbfid = tk_cre_mbf(&cmbf);
+
+    // センサ制御タスクの生成・実行
     tskid_sns = tk_cre_tsk(&ctsk_sns);
     tk_sta_tsk(tskid_sns, 0);
+    
+    // LED制御タスクの生成・実行
+    tskid_led = tk_cre_tsk(&ctsk_led);
+    tk_sta_tsk(tskid_led, 0);
 
     tk_slp_tsk(TMO_FEVR);
     return 0;
