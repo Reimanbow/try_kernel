@@ -145,6 +145,17 @@ ER tk_snd_mbf(ID mbfid, const void *msg, INT msgsz, TMO tmout);
  */
 INT tk_rcv_mbf(ID mbfid, void *msg, TMO tmout);
 
+// 割り込みハンドラ定義情報
+typedef struct t_dint {
+    ATR intatr;     // 割り込みハンドラ属性
+    FP  inthdr;     // 割り込みハンドラアドレス
+} T_DINT;
+
+/**
+ * @brief 割り込みハンドラ定義
+ */
+ER tk_def_int(UINT intno, const T_DINT *pk_dint);
+
 // デバイス管理API
 ID tk_opn_dev(const UB *devnm, UINT omode);
 ER tk_srea_dev(ID dd, W start, void *buf, SZ size, SZ *asize);
