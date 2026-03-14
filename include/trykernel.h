@@ -5,11 +5,11 @@
 #define TRYKERNEL_H
 
 #include "typedef.h"
+#include "error.h"
+#include "config.h"
 #include "sysdef.h"
 #include "syslib.h"
-#include "config.h"
-#include "error.h"
-#include "knldef.h"
 #include "apidef.h"
+#include "gpio.h"
 
 #endif /* TRYKERNEL_H */
