@@ -20,6 +20,7 @@ add_executable(${TARGET_NAME}
     kernel/context.c
     kernel/dispatch.S
     kernel/eventflag.c
+    kernel/gpio.c
     kernel/inittsk.c
     kernel/interrupt.c
     kernel/messagebuf.c

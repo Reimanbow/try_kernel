@@ -66,6 +66,23 @@ static inline UW get_primask(void) {
 /* 割り込み許可マクロ */
 #define EI(intsts)  (set_primask(intsts))
 
+/* 割り込みコントローラ制御 */
+
+/**
+ * @brief 割り込み許可
+ */
+extern void EnableInt(UINT intno, INT level);
+
+/**
+ * @brief 割り込み禁止
+ */
+extern void DisableInt(UINT intno);
+
+/**
+ * @brief 割り込みクリア
+ */
+extern void ClearInt(UINT intno);
+
 /* デバッグ用シリアル通信 */
 
 /**

@@ -2,100 +2,121 @@
  * @file usermain.c
  */
 #include <trykernel.h>
-#include <knldef.h>
 
-extern void (* const vector_tbl[])();
+#define GPIO_TRIG               12      // TRIG信号 P12
+#define GPIO_ECHO               13      // ECHO信号 P13
+#define GPIO_LED                14      // LED P14
 
-#define FIFO_ST                 (0xD0000050)
-#define FIFO_ST_RDY             (1<<1)
-#define FIFO_ST_VLD             (1<<0)
+// センサ制御タスクの情報
+ID  tskid_sns;                          // タスクID番号
+#define STKSZ_SNS   1024                // スタックサイズ
+UW  tskstk_sns[STKSZ_SNS/sizeof(UW)];   // スタック領域
+void tsk_sns(INT stacd, void *exinf);   // タスク実行関数
 
-#define FIFO_WR                 (SIO_BASE+0x54)
-#define FIFO_RD                 (SIO_BASE+0x58)
+// センサ制御タスク生成情報
+T_CTSK ctsk_sns = {
+    .tskatr     = TA_HLNG | TA_RNG3 | TA_USERBUF,
+    .task       = tsk_sns,
+    .stksz      = STKSZ_SNS,
+    .itskpri    = 5,
+    .bufptr     = tskstk_sns,
+};
 
-/**
- * @brief コア1起床関数
- * @param UW *vtbl  例外ベクタテーブルのアドレス
- * @param UW *sp    スタックポインタの値
- * @param FP ent    実行開始アドレス
- */
-void mcore_wup_core1(UW *vtbl, UW *sp, FP ent) {
-    UW      cmd[] = {0, 0, 1, (UW)vtbl, (UW)sp, (UW)ent};
-    UW      res;
-    UINT    seq = 0;
+UW      tim1, tim2;     // 時刻計測用グローバル変数
 
-    do {
-        if (!cmd[seq]) {
-            while (in_w(FIFO_ST) & FIFO_ST_VLD) in_w(FIFO_RD);  // FIFOを空にする
-            __asm__ volatile("sev");    // SEV命令発行
-        }
+// ECHO信号割り込みハンドラ
+#define INTNO_ECHO_EDGE_HIGH    21  // ECHO割り込みエッジHIGH
+#define INTNO_ECHO_EDGE_LOW     20  // ECHO割り込みエッジLOW
 
-        while ((in_w(FIFO_ST) & FIFO_ST_RDY) == 0);     // FIFOが送信可能になるまで待つ
-        out_w(FIFO_WR, cmd[seq]);                       // FIFOにデータを書き込む
-        __asm__ volatile("sev");                        // SEV命令発行
+void echo_inthdr(UW intno) {
+    UW  val;
 
-        while ((in_w(FIFO_ST) & FIFO_ST_VLD) == 0) {    // FIFOのデータを待つ
-            __asm__ volatile("wfe");                    // WFE命令発行
-        }
-        res = in_w(FIFO_RD);
-
-        if (cmd[seq] == res) {
-            seq++;      // Core1からの応答の確認
-        } else {
-            seq = 0;    // エラー 最初からやり直し
-        }
-    } while (seq < sizeof(cmd) / sizeof(UW));
-}
-
-void func_core1(void) {
-    UINT    cnt;
-
-    // LEDのポートの初期化
-    // GP15端子出力無効
-    out_w(GPIO_OE_CLR, (1<<15));
-    // GP15端子出力をクリア
-    out_w(GPIO_OUT_CLR, (1<<15));
-    // GP15端子 SIO
-    out_w(GPIO_CTRL(15), 5);
-    // GP15出力有効
-    out_w(GPIO_OE_SET, (1<<15));
-
-    // タイマの初期化
-    out_w(SYST_CSR, SYST_CSR_CLKSOURCE);
-    out_w(SYST_RVR, (TIMER_PERIOD*TMCLK_KHz)-1);
-    out_w(SYST_CVR, (TIMER_PERIOD*TMCLK_KHz)-1);
-    out_w(SYST_CSR, SYST_CSR_CLKSOURCE | SYST_CSR_ENABLE);
-
-    // LEDの点滅
-    while (1) {
-        out_w(GPIO_OUT_XOR, 1<<15);
-
-        cnt = 500 / TIMER_PERIOD;
-        while (cnt) {
-            if ((in_w(SYST_CSR) & SYST_CSR_COUNTFLAG) != 0) {
-                cnt--;
+    for (int i = 0; i < 4; i++) {
+        val = in_w(INTR(i));                                    // 割り込み要因の取得
+        if (i == 1) {
+            if (val & (1 << INTNO_ECHO_EDGE_HIGH)) {            // エッジHIGH検出
+                tim1 = in_w(TIMER_TIMELR);                      // 開始時刻取得
+            } else if (val & (1 << INTNO_ECHO_EDGE_LOW)) {     // エッジLOW検出
+                tim2 = in_w(TIMER_TIMELR);                      // 終了時刻取得
+                tk_wup_tsk(tskid_sns);                          // タスクへの通知
             }
         }
+        out_w(INTR(i), val);                                    // 割り込み要因のクリア
     }
+}
+
+// 10マイクロ秒待ち
+static void wait_10micro(void) {
+    UW      t0, t;
+    t0 = in_w(TIMER_TIMELR);
+    do {
+        t = in_w(TIMER_TIMELR);
+    } while (t - t0 <= 10);
+}
+
+// 障害物に対するアクションの実行
+static void do_action(UW dis) {
+    if (dis < 150) {
+        // 障害物が近ければLED点灯
+        out_w(GPIO_OUT_SET, 1<<GPIO_LED);
+    } else {
+        out_w(GPIO_OUT_CLR, 1<<GPIO_LED);
+    }
+}
+
+// センサ制御タスクの実行関数
+void tsk_sns(INT stacd, void *exinf) {
+    // 割り込み登録情報
+    T_DINT  dint = {
+        .intatr = TA_HLNG,
+        .inthdr = echo_inthdr,
+    };
+
+    UW      tim_val;    // 計測した時間
+    INT     dis;        // 障害物の距離
+    ER      err;        // エラーコード
+
+    // GPIOの設定
+    gpio_enable_output(GPIO_LED, 0);        // LED出力設定 初期値LOW
+    gpio_enable_output(GPIO_TRIG, 0);       // TRIG信号出力設定 初期値LOW
+    gpio_enable_input(GPIO_ECHO);           // ECHO信号入力設定
+
+    gpio_set_intmode(GPIO_ECHO, INTE_MODE_EDGE_LOW | INTE_MODE_EDGE_HIGH);  // ECHO信号割り込みの設定
+    tk_def_int(IRQ_BANK0, &dint);                                           // ECHO信号割り込みハンドラの登録
+
+    out_w(WDT_TICK, WDT_TICK_ENABLE | 12);                                  // Timer初期化(1MHz)
+
+    while (1) {
+        for (int i = 0; i < 3; i++) {
+            out_w(INTR(i), in_w(INTR(i)));  // 割り込み要因の消去
+        }
+        ClearInt(IRQ_BANK0);
+        EnableInt(IRQ_BANK0, 2);            // ECHO信号割り込みを有効(優先度2)
+
+        // TRIG信号の生成
+        out_w(GPIO_OUT_SET, 1<<GPIO_TRIG);
+        wait_10micro();
+        out_w(GPIO_OUT_CLR, 1<<GPIO_TRIG);
+
+        err = tk_slp_tsk(1000);             // 割り込みハンドラからの起床待ち
+        DisableInt(IRQ_BANK0);              // ECHO信号割り込みを無効
+
+        if (err >= E_OK) {
+            tim_val = tim2 - tim1;
+            dis = (tim_val/2) * 340 / 1000; // 障害物の距離を計算
+            do_action(dis);                 // 障害物に対するアクションの実行
+        }
+        tk_dly_tsk(500);
+    }
+    tk_slp_tsk(TMO_FEVR);
 }
 
 int usermain(void) {
-    // LEDのポートの初期化
-    // GP14端子出力無効
-    out_w(GPIO_OE_CLR, (1<<14));
-    // GP14端子出力をクリア
-    out_w(GPIO_OUT_CLR, (1<<14));
-    // GP14端子 SIO
-    out_w(GPIO_CTRL(14), 5);
-    // GP14出力有効
-    out_w(GPIO_OE_SET, (1<<14));
+    tm_putstring("Start usermain\n");
 
-    // CORE1を起床
-    mcore_wup_core1((UW*)vector_tbl, (UW*)0x20042000, (FP)func_core1);
+    tskid_sns = tk_cre_tsk(&ctsk_sns);
+    tk_sta_tsk(tskid_sns, 0);
 
-    // LEDの点灯
-    while (1) {
-        out_w(GPIO_OUT_XOR, 1<<14);
-        tk_dly_tsk(500);
-    }
+    tk_slp_tsk(TMO_FEVR);
+    return 0;
 }
