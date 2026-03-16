@@ -58,11 +58,11 @@ typedef struct st_tcb {
     const void      *msg;   // メッセージを格納する領域
 } TCB;
 
-extern TCB  tcb_tbl[];      // TCBテーブル
-extern TCB  *ready_queue[]; // タスクの実行待ち行列(優先度毎)
-extern TCB  *cur_task;      // 実行中のタスク
-extern TCB  *sche_task;     // 次に実行するタスク
-extern TCB  *wait_queue;    // タスクの時間待ち行列
+extern TCB  tcb_tbl[CPU_CORE_NUM][CNF_MAX_TSKID];                   // TCBテーブル
+extern TCB  *ready_queue[CPU_CORE_NUM][CNF_MAX_TSKPRI];             // タスクの実行待ち行列(優先度毎)
+extern TCB  *cur_task[CPU_CORE_NUM];                                // 実行中のタスク
+extern TCB  *sche_task[CPU_CORE_NUM];                               // 次に実行するタスク
+extern TCB  *wait_queue[CPU_CORE_NUM];                              // タスクの時間待ち行列
 
 /* グローバル関数 */
 /**
@@ -157,10 +157,54 @@ typedef struct st_mbfcb {
 extern void (* const vector_tbl[])();
 
 // 例外・割り込みベクタテーブル
-extern void (*knl_vec_tbl[])();
+extern void (*vec_tbl_c0[])();  // Core0/RAM
+extern void (*vec_tbl_c1[])();  // Core1/RAM
 
 // デフォルトハンドラ
 extern void Default_Handler(void);
+
+// マルチコア制御
+/**
+ * @brief CPUコア1の起床
+ */
+void icc_wup_core1(UW *vtbl, UW *sp, FP ent);
+
+// CPUコア間スピンロック制御関数
+/**
+ * @brief CPUコア間スピンロックの初期化
+ */
+extern void icc_ini_spin(void);
+
+/**
+ * @brief CPUコア間スピンロックのロック
+ */
+extern void icc_loc_spin(UINT no);
+
+/**
+ * @brief CPUコア間スピンロックのアンロック
+ */
+extern void icc_unl_spin(UINT no);
+
+#define SPINLOCK_SYNC_C0    0   // CPUコア同期用スピンロック(Core0)
+#define SPINLOCK_SYNC_C1    1   // CPUコア同期用スピンロック(Core0)
+#define SPINLOCK_DEBUG      2   // デバッグ用シリアル通信用スピンロック
+#define SPINLOCK_ICM        3   // CPUコア間メッセージ用スピンロック
+
+// CPUコア割り込み制御関数
+/**
+ * @brief CPUコア間割り込み初期化
+ */
+void init_icc_int(void);
+
+/**
+ * @brief CPUコア間割り込みハンドラの登録
+ */
+ER icc_def_int(UINT intno, FP inthdr);
+
+/**
+ * @brief CPUコア間割り込み生成関数
+ */
+ER icc_ras_int(UW code);
 
 /**
  * @brief OSメイン関数

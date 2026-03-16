@@ -12,15 +12,15 @@ ER tk_dly_tsk(RELTIM dlytim) {
 
     DI(intsts);     // 割り込みの禁止
     if (dlytim > 0) {
-        tqueue_remove_top(&ready_queue[cur_task->itskpri]); // タスクをレディキューから外す
+        tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]); // タスクをレディキューから外す
 
         // TCBの各種情報を変更する
-        cur_task->state     = TS_WAIT;                  // タスクの状態を待ち状態に変更
-        cur_task->waifct    = TWFCT_DLY;                // 待ち要因を設定
-        cur_task->waitim    = dlytim + TIMER_PERIOD;    // 待ち時間を設定
-        cur_task->waierr    = &err;                     // 待ち解除時のエラーコード
+        cur_task[CPU_CORE]->state     = TS_WAIT;                  // タスクの状態を待ち状態に変更
+        cur_task[CPU_CORE]->waifct    = TWFCT_DLY;                // 待ち要因を設定
+        cur_task[CPU_CORE]->waitim    = dlytim + TIMER_PERIOD;    // 待ち時間を設定
+        cur_task[CPU_CORE]->waierr    = &err;                     // 待ち解除時のエラーコード
 
-        tqueue_add_entry(&wait_queue, cur_task);        // タスクをウェイトキューに繋ぐ
+        tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);        // タスクをウェイトキューに繋ぐ
         scheduler();                                    // スケジューラの実行
     }
     EI(intsts);     // 割り込みの許可
@@ -33,20 +33,20 @@ ER tk_slp_tsk(TMO tmout) {
     ER      err = E_OK;
 
     DI(intsts);     // 割り込みの禁止
-    if (cur_task->wupcnt > 0) {
+    if (cur_task[CPU_CORE]->wupcnt > 0) {
         // 起床要求あり
-        cur_task->wupcnt--;
+        cur_task[CPU_CORE]->wupcnt--;
     } else {
         // 起床要求なし
-        tqueue_remove_top(&ready_queue[cur_task->itskpri]); // タスクをレディキューから外す
+        tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]); // タスクをレディキューから外す
 
         // TCBの各種情報を変更する
-        cur_task->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
-        cur_task->waifct    = TWFCT_SLP;    // 待ち要因を設定
-        cur_task->waitim    = (tmout==TMO_FEVR) ? tmout : (tmout+TIMER_PERIOD); // 待ち時間を設定
-        cur_task->waierr    = &err;
+        cur_task[CPU_CORE]->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
+        cur_task[CPU_CORE]->waifct    = TWFCT_SLP;    // 待ち要因を設定
+        cur_task[CPU_CORE]->waitim    = (tmout==TMO_FEVR) ? tmout : (tmout+TIMER_PERIOD); // 待ち時間を設定
+        cur_task[CPU_CORE]->waierr    = &err;
 
-        tqueue_add_entry(&wait_queue, cur_task);    // タスクをウェイトキューに繋ぐ
+        tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);    // タスクをウェイトキューに繋ぐ
         scheduler();                                // スケジューラの実行
     }
     EI(intsts);     // 割り込みの許可
@@ -62,16 +62,16 @@ ER tk_wup_tsk(ID tskid) {
     if (tskid <= 0 || tskid > CNF_MAX_TSKID) return E_ID;   // ID番号チェック
 
     DI(intsts);     // 割り込みの禁止
-    tcb = &tcb_tbl[tskid - 1];
+    tcb = &tcb_tbl[CPU_CORE][tskid - 1];
     if ((tcb->state == TS_WAIT) && (tcb->waifct == TWFCT_SLP)) {
         // tk_slp_tskで待ち状態か?
-        tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+        tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
 
         // TCBの各種情報を変更する
         tcb->state  = TS_READY;
         tcb->waifct = TWFCT_NON;
 
-        tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ
+        tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ
         scheduler();                                        // スケジューラの実行
     } else if (tcb->state == TS_READY || tcb->state == TS_WAIT) {
         // 実行できる状態の場合

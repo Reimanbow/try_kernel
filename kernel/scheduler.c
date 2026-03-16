@@ -5,9 +5,9 @@
 #include <trykernel.h>
 #include <knldef.h>
 
-TCB *ready_queue[CNF_MAX_TSKPRI];   // タスクのレディキュー
-TCB *cur_task;                      // 実行中のタスク
-TCB *sche_task;                     // 次に実行するタスク
+TCB *ready_queue[CPU_CORE_NUM][CNF_MAX_TSKPRI];   // タスクのレディキュー
+TCB *cur_task[CPU_CORE_NUM];                      // 実行中のタスク
+TCB *sche_task[CPU_CORE_NUM];                     // 次に実行するタスク
 
 UW  disp_running;                   // ディスパッチャ実行中
 
@@ -15,16 +15,16 @@ UW  disp_running;                   // ディスパッチャ実行中
 void scheduler(void) {
     INT     i;
     for (i = 0; i < CNF_MAX_TSKPRI; i++) {
-        if (ready_queue[i] != NULL) break;
+        if (ready_queue[CPU_CORE][i] != NULL) break;
     }
 
     if (i < CNF_MAX_TSKPRI) {
-        sche_task = ready_queue[i];
+        sche_task[CPU_CORE] = ready_queue[CPU_CORE][i];
     } else {
         // 実行できるタスクはない
-        sche_task = NULL;
+        sche_task[CPU_CORE] = NULL;
     }
-    if (sche_task != cur_task && !disp_running) {
+    if (sche_task[CPU_CORE] != cur_task[CPU_CORE] && !disp_running) {
         // ディスパッチャを実行
         dispatch();
     }

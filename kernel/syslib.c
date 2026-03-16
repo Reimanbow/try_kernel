@@ -24,6 +24,7 @@ void tm_com_init(void) {
 UINT tm_putstring(char* str) {
     UINT cnt = 0;
 
+    icc_loc_spin(SPINLOCK_DEBUG);
     while (*str) {
         // 送信FIFOの空き待ち
         while ((in_w(UART0_BASE+UARTx_FR) & UART_FR_TXFF) != 0);
@@ -32,5 +33,6 @@ UINT tm_putstring(char* str) {
         out_w(UART0_BASE+UARTx_DR, *str++);
         cnt++;
     }
+    icc_unl_spin(SPINLOCK_DEBUG);
     return cnt;
 }

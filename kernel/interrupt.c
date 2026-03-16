@@ -6,10 +6,11 @@
 #include <knldef.h>
 
 // 例外ベクタテーブル
-void (*knl_vec_tbl[N_SYSVEC + N_INTVEC])() __attribute__((section(".vector_ram")));
+void (*vec_tbl_c0[N_SYSVEC + N_INTVEC])() __attribute__((section(".vector_c0")));
+void (*vec_tbl_c1[N_SYSVEC + N_INTVEC])() __attribute__((section(".vector_c1")));
 
 // 割り込みハンドラテーブル(TA_HLNG属性のみ)
-static FP inthdr_tbl[N_INTVEC];
+static FP inthdr_tbl[CPU_CORE_NUM][N_INTVEC];
 
 // タスク独立部の実行変数
 _UW knl_taskindp;
@@ -27,7 +28,7 @@ void hll_inthdr(void) {
     UW  intno;
 
     intno   = get_ipsr() - N_SYSVEC;    // 割り込み番号の取得
-    inthdr  = inthdr_tbl[intno];        // 割り込みハンドラの取得
+    inthdr  = inthdr_tbl[CPU_CORE][intno];        // 割り込みハンドラの取得
 
     knl_taskindp++;
     (*inthdr)(intno);                   // 割り込みハンドラ呼び出し
@@ -43,7 +44,7 @@ ER tk_def_int(UINT intno, const T_DINT *pk_dint) {
     inthdr = pk_dint->inthdr;
     if (inthdr != NULL) {
         if ((pk_dint->intatr & TA_HLNG) != 0) { // TA_HLNG属性のハンドラ処理
-            inthdr_tbl[intno] = inthdr;         // TA_HLNG属性の割り込みハンドラの登録
+            inthdr_tbl[CPU_CORE][intno] = inthdr;         // TA_HLNG属性の割り込みハンドラの登録
             inthdr = hll_inthdr;
         }
     } else {                                    // 割り込みハンドラの登録解除

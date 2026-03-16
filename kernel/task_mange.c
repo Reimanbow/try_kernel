@@ -6,7 +6,7 @@
 #include <knldef.h>
 
 // タスク管理ブロック
-TCB tcb_tbl[CNF_MAX_TSKID];
+TCB tcb_tbl[CPU_CORE_NUM][CNF_MAX_TSKID];
 
 /**
  * タスク生成API
@@ -27,19 +27,19 @@ ID tk_cre_tsk(const T_CTSK *pk_ctsk) {
 
     // 未使用のTCBを検索
     for (i = 0; i < CNF_MAX_TSKID; i++) {
-        if (tcb_tbl[i].state == TS_NONEXIST) break;
+        if (tcb_tbl[CPU_CORE][i].state == TS_NONEXIST) break;
     }
 
     // TCBの初期化
     if (i < CNF_MAX_TSKID) {
-        tcb_tbl[i].state    = TS_DORMANT;
-        tcb_tbl[i].pre      = NULL;
-        tcb_tbl[i].next     = NULL;
+        tcb_tbl[CPU_CORE][i].state    = TS_DORMANT;
+        tcb_tbl[CPU_CORE][i].pre      = NULL;
+        tcb_tbl[CPU_CORE][i].next     = NULL;
 
-        tcb_tbl[i].tskadr   = pk_ctsk->task;
-        tcb_tbl[i].itskpri  = pk_ctsk->itskpri;
-        tcb_tbl[i].stksz    = pk_ctsk->stksz;
-        tcb_tbl[i].stkadr   = pk_ctsk->bufptr;
+        tcb_tbl[CPU_CORE][i].tskadr   = pk_ctsk->task;
+        tcb_tbl[CPU_CORE][i].itskpri  = pk_ctsk->itskpri;
+        tcb_tbl[CPU_CORE][i].stksz    = pk_ctsk->stksz;
+        tcb_tbl[CPU_CORE][i].stkadr   = pk_ctsk->bufptr;
 
         tskid = i+1;
     } else {
@@ -66,12 +66,12 @@ ER tk_sta_tsk(ID tskid, INT stacd) {
     if (tskid <= 0 || tskid > CNF_MAX_TSKID) return E_ID;
     DI(intsts);     // 割り込みを禁止
 
-    tcb = &tcb_tbl[tskid-1];
+    tcb = &tcb_tbl[CPU_CORE][tskid-1];
     if (tcb->state == TS_DORMANT) {
         // タスクを実行できる状態に変更
         tcb->state = TS_READY;
         tcb->context = make_context(tcb->stkadr, tcb->stksz, tcb->tskadr);
-        tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);
+        tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);
         scheduler();
     } else {
         // タスクを実行できない(休止状態ではない)
@@ -93,8 +93,8 @@ void tk_ext_tsk(void) {
     DI(intsts);     // 割り込み禁止
 
     // タスクを休止状態へ
-    cur_task->state     = TS_DORMANT;
-    tqueue_remove_top(&ready_queue[cur_task->itskpri]);
+    cur_task[CPU_CORE]->state     = TS_DORMANT;
+    tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]);
 
     scheduler();    // スケジューラを実行
     EI(intsts);     // 割込みを許可

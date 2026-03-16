@@ -59,7 +59,11 @@ SECTIONS {
         __end = .;
     } > RAM
 
-    vec0 (NOLOAD) : {
-        *(.vector_ram)
+    .vec0 (NOLOAD) : {
+        *(.vector_c0)
     } > RAM4
+
+    .vec1 (NOLOAD) : {
+        *(.vector_c1)
+    } > RAM5
 }

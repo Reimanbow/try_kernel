@@ -5,7 +5,7 @@
 #include <trykernel.h>
 #include <knldef.h>
 
-MBFCB   mbfcb_tbl[CNF_MAX_MBFID];   // メッセージバッファ管理ブロック
+MBFCB   mbfcb_tbl[CPU_CORE_NUM][CNF_MAX_MBFID];   // メッセージバッファ管理ブロック
 
 // メッセージバッファの生成API
 ID tk_cre_mbf(const T_CMBF *pk_cmbf) {
@@ -19,18 +19,18 @@ ID tk_cre_mbf(const T_CMBF *pk_cmbf) {
     }
 
     DI(intsts);     // 割り込み禁止
-    for (mbfid = 0; mbfcb_tbl[mbfid].state != KS_NONEXIST; mbfid++);
+    for (mbfid = 0; mbfcb_tbl[CPU_CORE][mbfid].state != KS_NONEXIST; mbfid++);
 
     if (mbfid < CNF_MAX_MBFID) {
         // メッセージバッファ管理情報の初期化
-        mbfcb_tbl[mbfid].state  = KS_EXIST;
-        mbfcb_tbl[mbfid].bufsz  = pk_cmbf->bufsz;
-        mbfcb_tbl[mbfid].maxmsz = pk_cmbf->maxmsz;
-        mbfcb_tbl[mbfid].bufptr = pk_cmbf->bufptr;
+        mbfcb_tbl[CPU_CORE][mbfid].state  = KS_EXIST;
+        mbfcb_tbl[CPU_CORE][mbfid].bufsz  = pk_cmbf->bufsz;
+        mbfcb_tbl[CPU_CORE][mbfid].maxmsz = pk_cmbf->maxmsz;
+        mbfcb_tbl[CPU_CORE][mbfid].bufptr = pk_cmbf->bufptr;
 
-        mbfcb_tbl[mbfid].freesz = pk_cmbf->bufsz;
-        mbfcb_tbl[mbfid].buf_rp = pk_cmbf->bufptr;
-        mbfcb_tbl[mbfid].buf_wp = pk_cmbf->bufptr;
+        mbfcb_tbl[CPU_CORE][mbfid].freesz = pk_cmbf->bufsz;
+        mbfcb_tbl[CPU_CORE][mbfid].buf_rp = pk_cmbf->bufptr;
+        mbfcb_tbl[CPU_CORE][mbfid].buf_wp = pk_cmbf->bufptr;
         mbfid++;
     } else {
         mbfid = E_LIMIT;
@@ -88,44 +88,44 @@ ER tk_snd_mbf(ID mbfid, const void *msg, INT msgsz, TMO tmout) {
     UINT    intsts;
     INT     rcvsz;
     ER      err = E_OK;
-    
+
     if (mbfid <= 0 || mbfid > CNF_MAX_MBFID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    mbfcb = &mbfcb_tbl[--mbfid];
+    mbfcb = &mbfcb_tbl[CPU_CORE][--mbfid];
 
     if (mbfcb->state == KS_EXIST) {
         if (mbfcb->freesz > msgsz + sizeof(UB)) {
             // バッファに空きがある
             store_msg(mbfcb, msg, msgsz);   // バッファへメッセージを格納
 
-            for (tcb = wait_queue; tcb != NULL; tcb = tcb->next) {
+            for (tcb = wait_queue[CPU_CORE]; tcb != NULL; tcb = tcb->next) {
                 if ((tcb->waifct == TWFCT_MBFR) && (tcb->waiobj == mbfid)) {
                     rcvsz = retrieve_msg(mbfcb, tcb->msg);
 
-                    tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+                    tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
                     tcb->state  = TS_READY;
                     tcb->waifct = TWFCT_NON;
                     *(tcb->waierr) = rcvsz;
-                    tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューへつなぐ
+                    tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);  // タスクをレディキューへつなぐ
                     scheduler();                                        // スケジューラを実行
                     break;
                 }
             }
         } else {
             // バッファに空きがないので送信待ち状態に移行
-            tqueue_remove_top(&ready_queue[cur_task->itskpri]);     // タスクをレディキューから外す
-                
-            // TCBの各種情報を変更する
-            cur_task->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
-            cur_task->waifct    = TWFCT_MBFS;   // 待ち要因を設定
-            cur_task->waiobj    = mbfid;        // 待ちメッセージバッファIDを設定
-            cur_task->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
-            cur_task->msgsz     = msgsz;        // メッセージのサイズ
-            cur_task->msg       = msg;          // メッセージ
-            cur_task->waierr    = &err;
+            tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]);     // タスクをレディキューから外す
 
-            tqueue_add_entry(&wait_queue, cur_task);                // タスクをウェイトキューにつなぐ
+            // TCBの各種情報を変更する
+            cur_task[CPU_CORE]->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
+            cur_task[CPU_CORE]->waifct    = TWFCT_MBFS;   // 待ち要因を設定
+            cur_task[CPU_CORE]->waiobj    = mbfid;        // 待ちメッセージバッファIDを設定
+            cur_task[CPU_CORE]->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
+            cur_task[CPU_CORE]->msgsz     = msgsz;        // メッセージのサイズ
+            cur_task[CPU_CORE]->msg       = msg;          // メッセージ
+            cur_task[CPU_CORE]->waierr    = &err;
+
+            tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);                // タスクをウェイトキューにつなぐ
             scheduler();                                            // スケジューラを実行
         }
     } else {
@@ -147,22 +147,22 @@ INT tk_rcv_mbf(ID mbfid, void *msg, TMO tmout) {
     if (mbfid <= 0 || mbfid > CNF_MAX_MBFID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    mbfcb = &mbfcb_tbl[--mbfid];
+    mbfcb = &mbfcb_tbl[CPU_CORE][--mbfid];
 
     if (mbfcb->state == KS_EXIST) {
         if (mbfcb->buf_rp != mbfcb->buf_wp) {
             // メッセージが格納されている
             msgsz = retrieve_msg(mbfcb, msg);   // バッファからメッセージを取得
 
-            for (tcb = wait_queue; tcb != NULL; tcb = tcb->next) {
+            for (tcb = wait_queue[CPU_CORE]; tcb != NULL; tcb = tcb->next) {
                 if ((tcb->waifct == TWFCT_MBFS) && (tcb->waiobj) == mbfid) {
                     if (tcb->msgsz <= mbfcb->freesz) {
                         store_msg(mbfcb, tcb->msg, tcb->msgsz);
 
-                        tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+                        tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
                         tcb->state  = TS_READY;
                         tcb->waifct = TWFCT_NON;
-                        tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューへつなぐ
+                        tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);  // タスクをレディキューへつなぐ
                         scheduler();                                        // スケジューラを実行
                     }
                     break;
@@ -170,17 +170,17 @@ INT tk_rcv_mbf(ID mbfid, void *msg, TMO tmout) {
             }
         } else {
             // メッセージがないので受信待ち状態に移行
-            tqueue_remove_top(&ready_queue[cur_task->itskpri]);     // タスクをレディキューから外す
+            tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]);     // タスクをレディキューから外す
 
             // TCBの各種情報を変更する
-            cur_task->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
-            cur_task->waifct    = TWFCT_MBFR;   // 待ち要因を設定
-            cur_task->waiobj    = mbfid;        // 待ちメッセージバッファIDを設定
-            cur_task->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を設定
-            cur_task->msg       = msg;          // メッセージを格納する領域
-            cur_task->waierr    = &err;
+            cur_task[CPU_CORE]->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
+            cur_task[CPU_CORE]->waifct    = TWFCT_MBFR;   // 待ち要因を設定
+            cur_task[CPU_CORE]->waiobj    = mbfid;        // 待ちメッセージバッファIDを設定
+            cur_task[CPU_CORE]->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を設定
+            cur_task[CPU_CORE]->msg       = msg;          // メッセージを格納する領域
+            cur_task[CPU_CORE]->waierr    = &err;
 
-            tqueue_add_entry(&wait_queue, cur_task);                // タスクをウェイトキューにつなぐ
+            tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);                // タスクをウェイトキューにつなぐ
             scheduler();                                            // スケジューラを実行
         }
     } else {

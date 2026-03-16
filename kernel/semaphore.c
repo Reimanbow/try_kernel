@@ -5,7 +5,7 @@
 #include <trykernel.h>
 #include <knldef.h>
 
-SEMCB   semcb_tbl[CNF_MAX_SEMID];   // セマフォ管理ブロック(SEMCB)
+SEMCB   semcb_tbl[CPU_CORE_NUM][CNF_MAX_SEMID];   // セマフォ管理ブロック(SEMCB)
 
 // セマフォの生成
 ID tk_cre_sem(const T_CSEM *pk_csem) {
@@ -13,13 +13,13 @@ ID tk_cre_sem(const T_CSEM *pk_csem) {
     UINT    intsts;
 
     DI(intsts);     // 割り込み禁止
-    for (semid = 0; semcb_tbl[semid].state != KS_NONEXIST; semid++);
+    for (semid = 0; semcb_tbl[CPU_CORE][semid].state != KS_NONEXIST; semid++);
 
     if (semid < CNF_MAX_SEMID) {
         // セマフォ管理情報の初期化
-        semcb_tbl[semid].state  = KS_EXIST;
-        semcb_tbl[semid].semcnt = pk_csem->isemcnt;
-        semcb_tbl[semid].maxsem = pk_csem->maxsem;
+        semcb_tbl[CPU_CORE][semid].state  = KS_EXIST;
+        semcb_tbl[CPU_CORE][semid].semcnt = pk_csem->isemcnt;
+        semcb_tbl[CPU_CORE][semid].maxsem = pk_csem->maxsem;
         semid++;
     } else {
         semid = E_LIMIT;
@@ -37,7 +37,7 @@ ER tk_wai_sem(ID semid, INT cnt, TMO tmout) {
     if (semid <= 0 || semid > CNF_MAX_SEMID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    semcb = &semcb_tbl[--semid];
+    semcb = &semcb_tbl[CPU_CORE][--semid];
     if (semcb->state == KS_EXIST) {
         if (semcb->semcnt >= cnt) {
             // 現在のセマフォの資源する ≧ 要求する資源数
@@ -47,17 +47,17 @@ ER tk_wai_sem(ID semid, INT cnt, TMO tmout) {
             err = E_TMOUT;
         } else {
             // 資源が足りなく、待ち状態に移行
-            tqueue_remove_top(&ready_queue[cur_task->itskpri]);     // タスクをレディキューから外す
+            tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]);     // タスクをレディキューから外す
 
             // TCBの各種情報を変更する
-            cur_task->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
-            cur_task->waifct    = TWFCT_SEM;    // 待ち要因を設定
-            cur_task->waiobj    = semid;        // 待ちセマフォIDを設定
-            cur_task->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
-            cur_task->waisem    = cnt;
-            cur_task->waierr    = &err;
+            cur_task[CPU_CORE]->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
+            cur_task[CPU_CORE]->waifct    = TWFCT_SEM;    // 待ち要因を設定
+            cur_task[CPU_CORE]->waiobj    = semid;        // 待ちセマフォIDを設定
+            cur_task[CPU_CORE]->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
+            cur_task[CPU_CORE]->waisem    = cnt;
+            cur_task[CPU_CORE]->waierr    = &err;
 
-            tqueue_add_entry(&wait_queue, cur_task);                // タスクをウェイトキューに繋ぐ
+            tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);                // タスクをウェイトキューに繋ぐ
             scheduler();                                            // スケジューラを実行
         }
     } else {
@@ -77,24 +77,24 @@ ER tk_sig_sem(ID semid, INT cnt) {
     if (semid <= 0 || semid > CNF_MAX_SEMID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    semcb = &semcb_tbl[--semid];
+    semcb = &semcb_tbl[CPU_CORE][--semid];
     if (semcb->state == KS_EXIST) {
         semcb->semcnt += cnt;           // 資源の返却
         if (semcb->semcnt <= semcb->maxsem) {
-            for (tcb = wait_queue; tcb != NULL; tcb = tcb->next) {
+            for (tcb = wait_queue[CPU_CORE]; tcb != NULL; tcb = tcb->next) {
                 // ウェイトキューのタスク確認
                 if ((tcb->waifct == TWFCT_SEM) && (tcb->waiobj == semid)) {
                     if (semcb->semcnt >= tcb->waisem) {
                         // 要求資源数を満たしていれば実行可能状態へ
                         semcb->semcnt -= tcb->waisem;
-                        tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+                        tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
 
                         // TCBの各種状態を変更する
                         tcb->state      = TS_READY;
                         tcb->waifct     = TWFCT_NON;
                         tcb->waierr     = &err;
 
-                        tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューへ繋ぐ
+                        tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);  // タスクをレディキューへ繋ぐ
                         scheduler();                                        // スケジューラを実行
                     } else {
                         break;

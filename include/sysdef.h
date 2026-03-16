@@ -249,4 +249,34 @@
 #define IRQ_I2C1                24
 #define IRQ_RTC                 25
 
+/* SIOレジスタ */
+#define SIO_BASE                0xD0000000
+
+#define SIO_CPUID               (SIO_BASE+0x00)
+
+#define	GPIO_IN                 (SIO_BASE+0x04)
+#define GPIO_OUT                (SIO_BASE+0x10)
+#define GPIO_OUT_SET            (SIO_BASE+0x14)
+#define GPIO_OUT_CLR            (SIO_BASE+0x18)
+#define GPIO_OUT_XOR            (SIO_BASE+0x1C)
+#define GPIO_OE_SET             (SIO_BASE+0x24)
+#define GPIO_OE_CLR             (SIO_BASE+0x28)
+#define GPIO_OE_XOR             (SIO_BASE+0x2C)
+
+#define FIFO_ST                 (SIO_BASE+0x50)
+#define FIFO_ST_ROE             (1<<3)
+#define FIFO_ST_WOF             (1<<2)
+#define FIFO_ST_RDY             (1<<1)
+#define FIFO_ST_VLD             (1<<0)
+
+#define FIFO_WR                 (SIO_BASE+0x54)
+#define FIFO_RD                 (SIO_BASE+0x58)
+
+#define SPINLOCK_ST             (SIO_BASE+0x5C)
+#define SPINLOCK(x)             ((SIO_BASE+0x100)+(x<<2))
+
+/* マルチコア関連定義 */
+#define CPU_CORE_NUM            (2)
+#define CPU_CORE                (*(UW*)0xD0000000)
+
 #endif /* SYSDEF_H */

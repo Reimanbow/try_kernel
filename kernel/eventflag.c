@@ -5,7 +5,7 @@
 #include <trykernel.h>
 #include <knldef.h>
 
-FLGCB   flgcb_tbl[CNF_MAX_FLGID];   // イベントフラグ管理ブロック(FLGCB)
+FLGCB   flgcb_tbl[CPU_CORE_NUM][CNF_MAX_FLGID];   // イベントフラグ管理ブロック(FLGCB)
 
 // イベントフラグの生成API
 ID tk_cre_flg(const T_CFLG *pk_cflg) {
@@ -13,11 +13,11 @@ ID tk_cre_flg(const T_CFLG *pk_cflg) {
     UINT    intsts;
 
     DI(intsts);     // 割り込み禁止
-    for (flgid = 0; flgcb_tbl[flgid].state != KS_NONEXIST; flgid++);
+    for (flgid = 0; flgcb_tbl[CPU_CORE][flgid].state != KS_NONEXIST; flgid++);
 
     if (flgid < CNF_MAX_FLGID) {
-        flgcb_tbl[flgid].state = KS_EXIST;
-        flgcb_tbl[flgid].flgptn = pk_cflg->iflgptn;
+        flgcb_tbl[CPU_CORE][flgid].state = KS_EXIST;
+        flgcb_tbl[CPU_CORE][flgid].flgptn = pk_cflg->iflgptn;
         flgid++;
     } else {
         flgid = E_LIMIT;
@@ -45,19 +45,19 @@ ER tk_set_flg(ID flgid, UINT setptn) {
     if (flgid <= 0 || flgid > CNF_MAX_FLGID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    flgcb = &flgcb_tbl[--flgid];
+    flgcb = &flgcb_tbl[CPU_CORE][--flgid];
     if (flgcb->state == KS_EXIST) {
         flgcb->flgptn |= setptn;        // フラグのセット
 
-        for (tcb = wait_queue; tcb != NULL; tcb = tcb->next) {
+        for (tcb = wait_queue[CPU_CORE]; tcb != NULL; tcb = tcb->next) {
             if ((tcb->waifct == TWFCT_FLG) && (tcb->waiobj == flgid)) {
                 if (check_flag(flgcb->flgptn, tcb->waiptn, tcb->wfmode)) {
                     // フラグの条件成立
-                    tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+                    tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
                     tcb->state  = TS_READY;
                     tcb->waifct = TWFCT_NON;
                     *tcb->p_flgptn = flgcb->flgptn;
-                    tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);   // タスクをレディキューへ繋ぐ
+                    tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);   // タスクをレディキューへ繋ぐ
                     scheduler();                                        // スケジューラを実行
 
                     if ((tcb->wfmode & TWF_BITCLR) != 0) {
@@ -91,7 +91,7 @@ ER tk_clr_flg(ID flgid, UINT clrptn) {
     if (flgid <= 0 || flgid > CNF_MAX_FLGID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    flgcb = &flgcb_tbl[--flgid];
+    flgcb = &flgcb_tbl[CPU_CORE][--flgid];
     if (flgcb->state == KS_EXIST) {
         flgcb->flgptn &= clrptn;        // フラグのクリア
     } else {
@@ -110,7 +110,7 @@ ER tk_wai_flg(ID flgid, UINT waiptn, UINT wfmode, UINT *p_flgptn, TMO tmout) {
     if (flgid <= 0 || flgid > CNF_MAX_FLGID) return E_ID;
 
     DI(intsts);     // 割り込み禁止
-    flgcb = &flgcb_tbl[--flgid];
+    flgcb = &flgcb_tbl[CPU_CORE][--flgid];
     if (flgcb->state == KS_EXIST) {
         if (check_flag(flgcb->flgptn, waiptn, wfmode)) {
             *p_flgptn = flgcb->flgptn;
@@ -127,19 +127,19 @@ ER tk_wai_flg(ID flgid, UINT waiptn, UINT wfmode, UINT *p_flgptn, TMO tmout) {
             err = E_TMOUT;
         } else {
             // 待ち条件不成立、待ち状態に移行
-            tqueue_remove_top(&ready_queue[cur_task->itskpri]); // タスクをレディキューから外す
+            tqueue_remove_top(&ready_queue[CPU_CORE][cur_task[CPU_CORE]->itskpri]); // タスクをレディキューから外す
 
             // TCBの各種情報を変更する
-            cur_task->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
-            cur_task->waifct    = TWFCT_FLG;    // 待ち要因を設定
-            cur_task->waiobj    = flgid;        // 待ちイベントフラグIDを設定
-            cur_task->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
-            cur_task->waiptn    = waiptn;
-            cur_task->wfmode    = wfmode;
-            cur_task->p_flgptn  = p_flgptn;
-            cur_task->waierr    = &err;
+            cur_task[CPU_CORE]->state     = TS_WAIT;      // タスクの状態を待ち状態に変更
+            cur_task[CPU_CORE]->waifct    = TWFCT_FLG;    // 待ち要因を設定
+            cur_task[CPU_CORE]->waiobj    = flgid;        // 待ちイベントフラグIDを設定
+            cur_task[CPU_CORE]->waitim    = ((tmout == TMO_FEVR) ? tmout : tmout + TIMER_PERIOD); // 待ち時間を指定
+            cur_task[CPU_CORE]->waiptn    = waiptn;
+            cur_task[CPU_CORE]->wfmode    = wfmode;
+            cur_task[CPU_CORE]->p_flgptn  = p_flgptn;
+            cur_task[CPU_CORE]->waierr    = &err;
 
-            tqueue_add_entry(&wait_queue, cur_task);            // タスクをウェイトキューに繋ぐ
+            tqueue_add_entry(&wait_queue[CPU_CORE], cur_task[CPU_CORE]);            // タスクをウェイトキューに繋ぐ
             scheduler();                                        // スケジューラを実行
         }
     } else {

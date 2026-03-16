@@ -5,13 +5,13 @@
 #include <trykernel.h>
 #include <knldef.h>
 
-TCB *wait_queue;    // 時間待ち状態のタスクの待ち行列(ウェイトキュー)
+TCB *wait_queue[CPU_CORE_NUM];    // 時間待ち状態のタスクの待ち行列(ウェイトキュー)
 
 // システムタイマ割り込みハンドラ
 void systimer_handler(void) {
     TCB     *tcb, *next;
 
-    for (tcb = wait_queue; tcb != NULL; tcb = next) {
+    for (tcb = wait_queue[CPU_CORE]; tcb != NULL; tcb = next) {
         next = tcb->next;
         if (tcb->waitim == TMO_FEVR) {
             continue;
@@ -20,7 +20,7 @@ void systimer_handler(void) {
             tcb->waitim -= TIMER_PERIOD;
         } else {
             // 待ち時間が経過したタスクを実行できる状態に戻す
-            tqueue_remove_entry(&wait_queue, tcb);              // タスクをウェイトキューから外す
+            tqueue_remove_entry(&wait_queue[CPU_CORE], tcb);              // タスクをウェイトキューから外す
 
             if (tcb->waifct == TWFCT_DLY) {
                 *tcb->waierr = E_OK;    // tk_dly_tskからの復帰はエラーなし
@@ -30,7 +30,7 @@ void systimer_handler(void) {
 
             tcb->state      = TS_READY;
             tcb->waifct     = TWFCT_NON;
-            tqueue_add_entry(&ready_queue[tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ
+            tqueue_add_entry(&ready_queue[CPU_CORE][tcb->itskpri], tcb);  // タスクをレディキューに繋ぐ
         }
     }
     scheduler();    // スケジューラを実行する
