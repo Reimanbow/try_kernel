@@ -83,6 +83,13 @@ extern void DisableInt(UINT intno);
  */
 extern void ClearInt(UINT intno);
 
+/* マルチコア制御 */
+
+/**
+ * @brief ユーザメイン関数での同期処理
+ */
+void icc_sync_core(UINT coreno);
+
 /* デバッグ用シリアル通信 */
 
 /**

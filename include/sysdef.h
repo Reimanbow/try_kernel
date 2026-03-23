@@ -9,7 +9,21 @@
 #define SRAM_START              (0x20000000)
 #define SRAM_SIZE               (256*1024)
 
-#define INITIAL_SP              (SRAM_START + SRAM_SIZE)
+#define SRAM0_START             (SRAM_START)
+#define SRAM0_SIZE              (64*1024)
+#define SRAM1_START             (SRAM0_START + SRAM0_SIZE)
+#define SRAM1_SIZE              (64*1024)
+#define SRAM2_START             (SRAM1_START + SRAM1_SIZE)
+#define SRAM2_SIZE              (64*1024)
+#define SRAM3_START             (SRAM2_START + SRAM2_SIZE)
+#define SRAM3_SIZE              (64*1024)
+#define SRAM4_START             (SRAM3_START + SRAM3_SIZE)
+#define SRAM4_SIZE              (4*1024)
+#define SRAM5_START             (SRAM4_START + SRAM4_SIZE)
+#define SRAM5_SIZE              (4*1024)
+
+#define INITIAL_SP0             (SRAM4_START + SRAM4_SIZE)
+#define INITIAL_SP1             (SRAM5_START + SRAM5_SIZE)
 
 /* APB ペリフェラル */
 #define CLOCKS_BASE             0x40008000

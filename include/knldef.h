@@ -65,10 +65,10 @@ extern TCB  *sche_task[CPU_CORE_NUM];                               // 次に実
 extern TCB  *wait_queue[CPU_CORE_NUM];                              // タスクの時間待ち行列
 
 /* グローバル関数 */
-/**
- * @brief リセットハンドラ
- */
-extern void Reset_Handler(void);
+
+// リセットハンドラ
+extern void Reset_Handler_c0(void);
+extern void Reset_Handler_c1(void);
 
 /**
  * @brief ディスパッチャ
@@ -206,14 +206,14 @@ ER icc_def_int(UINT intno, FP inthdr);
  */
 ER icc_ras_int(UW code);
 
-/**
- * @brief OSメイン関数
- */
-extern int main(void);
 
-/**
- * @brief ユーザメイン関数
- */
-extern int usermain(void);
+
+// OSメイン関数
+extern int main_c0(void);
+extern int main_c1(void);
+
+// ユーザメイン関数
+extern int usermain_c0(void);
+extern int usermain_c1(void);
 
 #endif /* KNLDEF_H */

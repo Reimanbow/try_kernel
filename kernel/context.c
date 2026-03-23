@@ -2,9 +2,7 @@
  * @file context.c
  * Try Kernel コンテキスト管理
  */
-#include <typedef.h>
-#include <sysdef.h>
-#include <syslib.h>
+#include <trykernel.h>
 #include <knldef.h>
 
 // スタック上の実行コンテキスト情報。SPレジスタの値は含まない

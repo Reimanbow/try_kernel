@@ -37,6 +37,7 @@ void hll_inthdr(void) {
 
 // 割り込みハンドラの登録API
 ER tk_def_int(UINT intno, const T_DINT *pk_dint) {
+    volatile FP *intvet;
     FP  inthdr;
 
     if (intno >= N_INTVEC) return E_ID;
@@ -51,7 +52,8 @@ ER tk_def_int(UINT intno, const T_DINT *pk_dint) {
         inthdr = Default_Handler;
     }
 
-    knl_vec_tbl[N_SYSVEC + intno] = inthdr;
+    intvet = (CPU_CORE)?(FP*)&vec_tbl_c1[N_SYSVEC]:(FP*)&vec_tbl_c0[N_SYSVEC];
+    intvet[intno] = inthdr;
 
     return E_OK;
 }

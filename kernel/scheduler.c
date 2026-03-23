@@ -9,7 +9,7 @@ TCB *ready_queue[CPU_CORE_NUM][CNF_MAX_TSKPRI];   // タスクのレディキュ
 TCB *cur_task[CPU_CORE_NUM];                      // 実行中のタスク
 TCB *sche_task[CPU_CORE_NUM];                     // 次に実行するタスク
 
-UW  disp_running;                   // ディスパッチャ実行中
+UW  disp_running[CPU_CORE_NUM];     // ディスパッチャ実行中
 
 // タスクのスケジューリング
 void scheduler(void) {
@@ -24,7 +24,7 @@ void scheduler(void) {
         // 実行できるタスクはない
         sche_task[CPU_CORE] = NULL;
     }
-    if (sche_task[CPU_CORE] != cur_task[CPU_CORE] && !disp_running) {
+    if (sche_task[CPU_CORE] != cur_task[CPU_CORE] && !disp_running[CPU_CORE]) {
         // ディスパッチャを実行
         dispatch();
     }

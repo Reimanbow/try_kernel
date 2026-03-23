@@ -2,9 +2,7 @@
  * @file vector_tbl.c
  * @brief Try Kernel 例外ベクタテーブル
  */
-#include <typedef.h>
-#include <sysdef.h>
-#include <syslib.h>
+#include <trykernel.h>
 #include <knldef.h>
 
 /**
@@ -18,8 +16,8 @@ void Default_Handler(void) {
  * @brief 例外ベクタテーブル
  */
 void (* const vector_tbl[])() __attribute__((section(".vector"))) = {
-    (void(*)()) (INITIAL_SP),   // 0: Top of Stack
-    Reset_Handler,              // 1: Reset
+    (void(*)()) (INITIAL_SP0),  // 0: Top of Stack
+    Reset_Handler_c0,           // 1: Reset
     Default_Handler,            // 2: NMI
     Default_Handler,            // 3: Hard Fault
     0,                          // 4: 未使用
