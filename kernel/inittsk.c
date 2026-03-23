@@ -31,7 +31,7 @@ void initsk_c0(INT stacd, void *exinf) {
 
 int main_c0(void) {
     init_icc_int();         // CPUコア間割り込み初期化
-    // init_icc_msg();         // CPUコア間メッセージ初期化
+    init_icc_msg();         // CPUコア間メッセージ初期化
     tm_com_init();          // デバッグ用シリアル通信の初期化
 
     // 初期タスク生成

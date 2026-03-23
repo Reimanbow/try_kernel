@@ -12,4 +12,6 @@
 #define CNF_MAX_SEMID   8   // 最大セマフォ数
 #define CNF_MAX_MBFID   8   // 最大メッセージバッファ数
 
+#define CNF_MAX_ICMID   5   // 最大CPUコア間メッセージ数
+
 #endif /* CONFIG_H */

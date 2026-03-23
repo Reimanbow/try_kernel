@@ -173,4 +173,21 @@ typedef struct {
     UB *rbuf;       // 受信バッファ
 } T_I2C_EXEC;
 
+// CPUコア間メッセージ属性
+typedef struct t_cicm {
+    ATR     icmatr;     // CPUコア間メッセージ属性
+    SZ      bufsz;      // CPUコア間メッセージのサイズ
+    INT     maxmsz;     // メッセージの最大サイズ
+    void    *bufptr;    // CPUコア間メッセージ領域のアドレス
+} T_CICM;
+
+// CPUコア間メッセージ属性
+#define TA_ICM_TO_C0    0x00010000      // CPUコア0へのメッセージ
+#define TA_ICM_TO_C1    0x00020000      // CPUコア1へのメッセージ
+
+// CPUコア間メッセージAPI
+ID icc_cre_msg(const T_CICM *pk_cicm);
+ER icc_snd_msg(ID icmid, const void *msg, INT msgsz, TMO tmout);
+INT icc_rcv_msg(ID icmid, void *msg, TMO tmout);
+
 #endif /* APIDEF_H */

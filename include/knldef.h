@@ -22,6 +22,9 @@ typedef enum {
     TWFCT_SEM   = 4,    // tk_wai_semによる資源待ち
     TWFCT_MBFS  = 5,    // tk_snd_mbfによる送信待ち
     TWFCT_MBFR  = 6,    // tk_rcv_mbfによる受信待ち
+
+    TWFCT_ICMS  = 100,  // icc_snd_msgによる送信待ち
+    TWFCT_ICMR  = 101,  // icc_rvc_msgによる受信待ち
 } TWFCT;
 
 // TCB(Task Control Block)定義
@@ -206,7 +209,24 @@ ER icc_def_int(UINT intno, FP inthdr);
  */
 ER icc_ras_int(UW code);
 
+#define ICCINT_ICM_RCV      1       // CPUコア間メッセージ受信
+#define ICCINT_ICM_SND      2       // CPUコア間メッセージ送信
 
+// CPUコア間メッセージ管理情報
+typedef struct st_icmcb {
+    KSSTAT  state;          // CPUコア間メッセージ状態
+    ATR     icmatr;         // CPUコア間メッセージ属性
+    SZ      bufsz;          // CPUコア間メッセージのサイズ
+    INT     maxmsz;         // メッセージの最大サイズ
+    void    *bufptr;        // CPUコア間メッセージ領域のアドレス
+
+    SZ      freesz;         // バッファサイズ
+    void    *buf_rp;        // バッファリードポイント
+    void    *buf_wp;        // バッファライトポイント
+} ICMCB;
+
+// CPUコア間メッセージ制御関数
+void init_icc_msg(void);        // CPUコア間メッセージの初期化
 
 // OSメイン関数
 extern int main_c0(void);
